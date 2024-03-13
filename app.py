@@ -26,7 +26,7 @@ Base.prepare(autoload_with=engine)
 Measurement = Base.classes.measurement
 Station = Base.classes.station
 
-# Create Session (Link) From Python To The DB
+# Create Session (Link) From Python To The Database
 session = Session(engine)
 
 
@@ -66,53 +66,74 @@ def precipitation():
     query_past_year_precipitation = session.query(Measurement.date, Measurement.prcp).\
         filter(Measurement.date >= query_past_year).all()
 
-    # Create Dictionary From Query Data And Append To List Of past_year_precipitation
+    # Create Dictionary From Query And Append To List past_year_precipitation
     past_year_precipitation = []
     for date, precipitation in query_past_year_precipitation:
         precipitation_dictionary = {}
         precipitation_dictionary[str(date)] = precipitation
         past_year_precipitation.append(precipitation_dictionary)
+    
+    # Return Past Year Precipitation Data As JSON
     return jsonify(past_year_precipitation)
 
 
 @app.route("/api/v1.0/stations")
 def stations():
+    # Query To Find All Stations In Dataset
     query_stations = session.query(Station.station).all()
+
+    # Convert Query To Flattened List
     stations = list(np.ravel(query_stations))
+
+    # Return All Stations As JSON
     return jsonify(stations)
 
 
 @app.route("/api/v1.0/tobs")
 def most_active_station_temperatures():
+    # Calculation For Date One Year From Last Date In Dataset
     query_past_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+
+    # Query Last 12 Months Of Temperature Observation Data For Most Active Station
     most_active_station_temperatures = session.query(Measurement.tobs).\
                                         filter(Measurement.station == 'USC00519281').\
                                         filter(Measurement.date >= query_past_year).all()
+    
+    # Convert Query To Flattened List
     temperatures = list(np.ravel(most_active_station_temperatures))
+
+    # Return Most Active Station Temperatures As JSON
     return jsonify(temperatures)
 
 
-@app.route("/api/v1.0/<start_date>") #ISO start_date format: (YYYY-MM-DD)
+@app.route("/api/v1.0/<start_date>") #ISO start_date Format: (YYYY-MM-DD)
 def temperature_statistics_start(start_date):
-    # specified_start_date = dt.date.fromisoformat(start_date)
+    # Query The Database For Temperature Statistics (Minimum, Maximum, Average)
     temperature_statistics = session.query(func.min(Measurement.tobs),
                                            func.max(Measurement.tobs),
                                            func.avg(Measurement.tobs)).\
                                     filter(Measurement.date >= start_date).all()
+    
+    # Convert Query To Flattened List
     statistics = list(np.ravel(temperature_statistics))
+
+    # Return Temperature Statistics As JSON
     return jsonify(statistics)
 
 
-@app.route("/api/v1.0/<start_date>/<end_date>")
+@app.route("/api/v1.0/<start_date>/<end_date>") #ISO start_date And end_date Format: (YYYY-MM-DD)
 def temperature_statistics_start_end(start_date, end_date):
-    specified_start_date = dt.date.fromisoformat(start_date)
-    specified_end_date = dt.date.fromisoformat(end_date)
+    # Query The Database For Temperature Statistics (Minimum, Maximum, Average)
     temperature_statistics = session.query(func.min(Measurement.tobs),
                                            func.max(Measurement.tobs),
                                            func.avg(Measurement.tobs)).\
-                                    filter(Measurement.date >= specified_start_date).\
-                                    filter(Measurement.date <= specified_end_date).all()
+                                    filter(Measurement.date >= start_date).\
+                                    filter(Measurement.date <= end_date).all()
+    
+    # Convert Query To Flattened List
     statistics = list(np.ravel(temperature_statistics))
+
+    # Return Temperature Statistics As JSON
     return jsonify(statistics)
 
 
